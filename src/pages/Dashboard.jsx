@@ -692,7 +692,7 @@ async function saveEditExpense(id) {
                     <button className="link-btn" onClick={() => saveEdit(e.id)}>Save</button>
                     <button className="link-btn" onClick={() => setEditingId(null)}>Cancel</button>
                   </>
-                ) : (
+                 ) : (
                   <>
                     <button className="link-btn" onClick={() => setReceiptEntry(e)}>Receipt →</button>
                     <button className="link-btn" onClick={() => startEdit(e)}>Edit</button>
