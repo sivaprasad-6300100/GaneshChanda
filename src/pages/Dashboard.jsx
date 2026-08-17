@@ -42,8 +42,9 @@ export default function Dashboard() {
   const [editExpNotes, setEditExpNotes] = useState('')
   const navigate = useNavigate()
   const [receiptEntry, setReceiptEntry] = useState(null)
+  const [entryPage, setEntryPage] = useState(0)
+  const ENTRIES_PER_PAGE = 5
   const receiptRef = useRef(null)
-
   const committeeName = localStorage.getItem('gc_committee_name')
   const memberName = localStorage.getItem('gc_member_name')
   const committeeCode = localStorage.getItem('gc_committee_code')
@@ -119,6 +120,9 @@ async function copyCode() {
       if (err.response?.status === 401) logout()
     }
   }
+
+
+  useEffect(() => { setEntryPage(0) }, [search, entries.length])
 
   useEffect(() => { loadData() }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -323,21 +327,112 @@ async function copyCode() {
   doc.save(`${(committeeName || 'committee').replace(/\s+/g, '_')}_report.pdf`)
 }
 
+function handleExport() {
+  const doc = new jsPDF()
+  const pageWidth = doc.internal.pageSize.getWidth()
+  const pageHeight = doc.internal.pageSize.getHeight()
+  const ink = [36, 26, 18]
+  const muted = [110, 96, 80]
+  const rule = [180, 160, 120]
 
-  async function handleExport() {
-    try {
-      const res = await api.get('/entries/export/', { responseType: 'blob' })
-      const url = window.URL.createObjectURL(new Blob([res.data]))
-      const link = document.createElement('a')
-      link.href = url
-      link.setAttribute('download', 'chanda_entries.csv')
-      document.body.appendChild(link)
-      link.click()
-      link.remove()
-    } catch (err) {
-      setError('Could not export entries.')
-    }
+  const fmt = (n) => `Rs. ${Number(n || 0).toLocaleString('en-IN')}`
+  const today = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })
+
+  // --- Letterhead: centered, serif, no color blocks — reads like a
+  // formal statement rather than a marketing report ---
+  doc.setFont('times', 'bold')
+  doc.setFontSize(18)
+  doc.setTextColor(...ink)
+  doc.text(committeeName || 'Committee', pageWidth / 2, 22, { align: 'center' })
+
+  doc.setFont('times', 'italic')
+  doc.setFontSize(11)
+  doc.setTextColor(...muted)
+  doc.text('Statement of Contributions', pageWidth / 2, 29, { align: 'center' })
+
+  doc.setDrawColor(...rule)
+  doc.setLineWidth(0.4)
+  doc.line(14, 35, pageWidth - 14, 35)
+
+  doc.setFont('times', 'normal')
+  doc.setFontSize(9)
+  doc.setTextColor(...muted)
+  doc.text(`Committee code: ${committeeCode || '-'}`, 14, 41)
+  doc.text(`Generated: ${today}`, pageWidth - 14, 41, { align: 'right' })
+
+  // --- Contributor table only — classic black-ruled ledger style ---
+  autoTable(doc, {
+    startY: 48,
+    head: [['#', 'Contributor', 'Mobile', 'Amount', 'Logged By']],
+    body: entries.map((e, i) => [
+      String(i + 1),
+      e.contributor_name,
+      e.mobile,
+      fmt(e.amount),
+      e.logged_by_name || '-',
+    ]),
+    theme: 'plain',
+    styles: {
+      font: 'times',
+      fontSize: 10,
+      textColor: ink,
+      cellPadding: { top: 5, bottom: 5, left: 4, right: 4 },
+      lineColor: rule,
+      lineWidth: 0.2,
+    },
+    headStyles: {
+      font: 'times',
+      fontStyle: 'bold',
+      fontSize: 9.5,
+      textColor: ink,
+      fillColor: false,
+      lineWidth: { bottom: 0.6 },
+      lineColor: ink,
+    },
+    columnStyles: {
+      0: { cellWidth: 10, textColor: muted },
+      3: { halign: 'right', fontStyle: 'bold' },
+    },
+    margin: { left: 14, right: 14 },
+    didDrawPage: () => {
+      // thin rule under header on every page for continuity
+      doc.setDrawColor(...rule)
+      doc.setLineWidth(0.3)
+      doc.line(14, 44, pageWidth - 14, 44)
+    },
+  })
+
+  // --- Total line, double-ruled like a closed ledger entry ---
+  const finalY = doc.lastAutoTable.finalY + 4
+  doc.setDrawColor(...ink)
+  doc.setLineWidth(0.5)
+  doc.line(pageWidth - 90, finalY, pageWidth - 14, finalY)
+  doc.setFont('times', 'bold')
+  doc.setFontSize(11)
+  doc.setTextColor(...ink)
+  doc.text('Total Collected', pageWidth - 90, finalY + 7)
+  doc.text(fmt(stats.total), pageWidth - 14, finalY + 7, { align: 'right' })
+  doc.setLineWidth(0.2)
+  doc.line(pageWidth - 90, finalY + 10, pageWidth - 14, finalY + 10)
+
+  doc.setFont('times', 'normal')
+  doc.setFontSize(8.5)
+  doc.setTextColor(...muted)
+  doc.text(`${entries.length} ${entries.length === 1 ? 'entry' : 'entries'} recorded`, pageWidth - 90, finalY + 16)
+
+  // --- Footer: page numbers, understated ---
+  const pageCount = doc.internal.getNumberOfPages()
+  for (let p = 1; p <= pageCount; p++) {
+    doc.setPage(p)
+    doc.setFont('times', 'italic')
+    doc.setFontSize(8)
+    doc.setTextColor(...muted)
+    doc.text('GaneshChanda — Contribution Statement', 14, pageHeight - 10)
+    doc.text(`Page ${p} of ${pageCount}`, pageWidth - 14, pageHeight - 10, { align: 'right' })
   }
+
+  doc.save(`${(committeeName || 'committee').replace(/\s+/g, '_')}_contributors.pdf`)
+}
 
 
   async function handleExpenseSubmit(e) {
@@ -438,6 +533,11 @@ async function saveEditExpense(id) {
       setError('Could not generate the receipt image.')
     }
   }
+  const totalPages = Math.max(1, Math.ceil(entries.length / ENTRIES_PER_PAGE))
+  const pagedEntries = entries.slice(
+    entryPage * ENTRIES_PER_PAGE,
+    entryPage * ENTRIES_PER_PAGE + ENTRIES_PER_PAGE
+  )
 
   return (
     <div className="dash">
@@ -539,7 +639,7 @@ async function saveEditExpense(id) {
           <div className="entries-head-row">
               <h3>Recent entries</h3>
               <div style={{ display: 'flex', gap: 8 }}>
-                <button className="ghost-btn" onClick={handleExport}>Export CSV</button>
+                <button className="ghost-btn" onClick={handleExport}>📋 Export Contributors</button>
                 <button className="ghost-btn primary" onClick={handleExportReport}>📄 Export Report</button>
               </div>
             </div>
@@ -550,7 +650,7 @@ async function saveEditExpense(id) {
             onChange={e => handleSearchChange(e.target.value)}
           />
           {entries.length === 0 && <p className="empty">No entries yet. Add the first contribution above.</p>}
-          {entries.map(e => (
+          {pagedEntries.map(e => (
             <div className="entry-row" key={e.id}>
              <div>
                {editingId === e.id ? (
@@ -602,6 +702,27 @@ async function saveEditExpense(id) {
               </div>
             </div>
           ))}
+          {entries.length > ENTRIES_PER_PAGE && (
+            <div className="pager">
+              <button
+                className="pager-btn"
+                onClick={() => setEntryPage(p => Math.max(0, p - 1))}
+                disabled={entryPage === 0}
+              >
+                ← Prev
+              </button>
+              <span className="pager-info">
+                Page {entryPage + 1} of {totalPages}
+              </span>
+              <button
+                className="pager-btn"
+                onClick={() => setEntryPage(p => Math.min(totalPages - 1, p + 1))}
+                disabled={entryPage >= totalPages - 1}
+              >
+                Next →
+              </button>
+            </div>
+          )}
         </div>
       </div>
       <div className="dash-body" style={{ marginTop: 20 }}>
