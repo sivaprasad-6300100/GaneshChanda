@@ -1,7 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { toPng } from 'html-to-image'
 import api from '../api.js'
 import { clearAuth } from '../authStorage.js'
+import ReceiptCard from '../components/ReceiptCard.jsx'
+import jsPDF from 'jspdf'
+import autoTable from 'jspdf-autotable'
 
 const UPI_ID = 'your-upi-id@bank' // TODO: replace with your real UPI ID before going live
 
@@ -37,6 +41,8 @@ export default function Dashboard() {
   const [editExpAmount, setEditExpAmount] = useState('')
   const [editExpNotes, setEditExpNotes] = useState('')
   const navigate = useNavigate()
+  const [receiptEntry, setReceiptEntry] = useState(null)
+  const receiptRef = useRef(null)
 
   const committeeName = localStorage.getItem('gc_committee_name')
   const memberName = localStorage.getItem('gc_member_name')
@@ -202,6 +208,122 @@ async function copyCode() {
     await loadData(value)
   }
 
+
+  function handleExportReport() {
+  const doc = new jsPDF()
+  const maroon = [110, 20, 35]
+  const marigold = [233, 138, 21]
+  const ink = [58, 35, 24]
+  const muted = [138, 111, 92]
+  const pageWidth = doc.internal.pageSize.getWidth()
+
+  const fmt = (n) => `Rs. ${Number(n || 0).toLocaleString('en-IN')}`
+
+  // --- Header band ---
+  doc.setFillColor(...maroon)
+  doc.rect(0, 0, pageWidth, 34, 'F')
+  doc.setTextColor(255, 248, 236)
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(16)
+  doc.text(committeeName || 'Committee', 14, 16)
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(10)
+  doc.text('Vinayaka Chavithi Chanda Collection Report', 14, 24)
+  doc.setFontSize(8.5)
+  doc.text(
+    `Generated ${new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })} - Committee code ${committeeCode || ''}`,
+    14, 30
+  )
+
+  // --- Summary stat cards ---
+  const cardY = 42
+  const cardW = (pageWidth - 28 - 16) / 3
+  const cards = [
+    ['TOTAL COLLECTED', fmt(stats.total)],
+    ['NET BALANCE', fmt(stats.net_balance)],
+    ['TOTAL ENTRIES', String(stats.count)],
+  ]
+  cards.forEach(([label, value], i) => {
+    const x = 14 + i * (cardW + 8)
+    doc.setDrawColor(227, 210, 172)
+    doc.setFillColor(251, 243, 226)
+    doc.roundedRect(x, cardY, cardW, 22, 2, 2, 'FD')
+    doc.setTextColor(...muted)
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(7.5)
+    doc.text(label, x + 5, cardY + 8)
+    doc.setTextColor(...ink)
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(13)
+    doc.text(value, x + 5, cardY + 17)
+  })
+
+  // --- Entries table ---
+  let y = cardY + 32
+  doc.setTextColor(...maroon)
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(12)
+  doc.text('Contribution Entries', 14, y)
+
+  autoTable(doc, {
+    startY: y + 5,
+    head: [['Contributor', 'Mobile', 'Amount', 'Logged by']],
+    body: entries.map(e => [
+      e.contributor_name,
+      e.mobile,
+      fmt(e.amount),
+      e.logged_by_name || '-',
+    ]),
+    theme: 'grid',
+    headStyles: { fillColor: marigold, textColor: [255, 248, 236], fontStyle: 'bold', fontSize: 9.5 },
+    bodyStyles: { fontSize: 9, textColor: ink, cellPadding: 4 },
+    alternateRowStyles: { fillColor: [251, 243, 226] },
+    columnStyles: { 2: { halign: 'right', fontStyle: 'bold' } },
+    margin: { left: 14, right: 14 },
+  })
+
+  // --- Expenses table ---
+  if (expenses.length > 0) {
+    y = doc.lastAutoTable.finalY + 14
+    if (y > 250) { doc.addPage(); y = 20 }
+    doc.setTextColor(...maroon)
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(12)
+    doc.text('Expenses', 14, y)
+
+    autoTable(doc, {
+      startY: y + 5,
+      head: [['Title', 'Category', 'Amount', 'Logged by']],
+      body: expenses.map(x => [
+        x.title,
+        x.category_display,
+        fmt(x.amount),
+        x.logged_by_name || '-',
+      ]),
+      theme: 'grid',
+      headStyles: { fillColor: maroon, textColor: [255, 248, 236], fontStyle: 'bold', fontSize: 9.5 },
+      bodyStyles: { fontSize: 9, textColor: ink, cellPadding: 4 },
+      alternateRowStyles: { fillColor: [251, 243, 226] },
+      columnStyles: { 2: { halign: 'right', fontStyle: 'bold' } },
+      margin: { left: 14, right: 14 },
+    })
+  }
+
+  // --- Footer ---
+  const pageCount = doc.internal.getNumberOfPages()
+  for (let p = 1; p <= pageCount; p++) {
+    doc.setPage(p)
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(8)
+    doc.setTextColor(...muted)
+    doc.text('Generated via GaneshChanda', 14, doc.internal.pageSize.getHeight() - 10)
+    doc.text(`Page ${p} of ${pageCount}`, pageWidth - 34, doc.internal.pageSize.getHeight() - 10)
+  }
+
+  doc.save(`${(committeeName || 'committee').replace(/\s+/g, '_')}_report.pdf`)
+}
+
+
   async function handleExport() {
     try {
       const res = await api.get('/entries/export/', { responseType: 'blob' })
@@ -286,6 +408,35 @@ async function saveEditExpense(id) {
       `🙏 Thank you ${entry.contributor_name}!\nWe received ₹${entry.amount} towards this year's Vinayaka Chavithi chanda.\n— ${committeeName}`
     )
     return `https://wa.me/91${entry.mobile}?text=${text}`
+  }
+
+  async function shareReceiptImage() {
+    if (!receiptRef.current || !receiptEntry) return
+    try {
+      const dataUrl = await toPng(receiptRef.current, { pixelRatio: 2 })
+      const blob = await (await fetch(dataUrl)).blob()
+      const file = new File([blob], `receipt-${receiptEntry.id}.png`, { type: 'image/png' })
+
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        // Mobile: opens the native share sheet — pick WhatsApp there and the
+        // designed receipt image goes straight to the contributor's chat.
+        await navigator.share({
+          files: [file],
+          title: 'Chanda Receipt',
+          text: `Receipt for ${receiptEntry.contributor_name}`,
+        })
+      } else {
+        // Desktop fallback: no native file-share support, so download the
+        // image and open a WhatsApp Web chat to attach it manually.
+        const link = document.createElement('a')
+        link.href = dataUrl
+        link.download = `receipt-${receiptEntry.id}.png`
+        link.click()
+        window.open(waLink(receiptEntry), '_blank')
+      }
+    } catch (err) {
+      setError('Could not generate the receipt image.')
+    }
   }
 
   return (
@@ -386,9 +537,12 @@ async function saveEditExpense(id) {
 
         <div className="entry-list-col">
           <div className="entries-head-row">
-            <h3>Recent entries</h3>
-            <button className="ghost-btn" onClick={handleExport}>Export CSV</button>
-          </div>
+              <h3>Recent entries</h3>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button className="ghost-btn" onClick={handleExport}>Export CSV</button>
+                <button className="ghost-btn primary" onClick={handleExportReport}>📄 Export Report</button>
+              </div>
+            </div>
           <input
             className="search-input"
             placeholder="Search by name or mobile..."
@@ -440,7 +594,7 @@ async function saveEditExpense(id) {
                   </>
                 ) : (
                   <>
-                    <a className="wa-link" target="_blank" rel="noopener noreferrer" href={waLink(e)}>Receipt →</a>
+                    <button className="link-btn" onClick={() => setReceiptEntry(e)}>Receipt →</button>
                     <button className="link-btn" onClick={() => startEdit(e)}>Edit</button>
                     <button className="link-btn danger" onClick={() => deleteEntry(e.id)}>Delete</button>
                   </>
@@ -548,6 +702,27 @@ async function saveEditExpense(id) {
 ))}
   </div>
 </div>
+      {receiptEntry && (
+        <div className="receipt-modal-backdrop" onClick={() => setReceiptEntry(null)}>
+          <div onClick={ev => ev.stopPropagation()}>
+            <ReceiptCard
+              ref={receiptRef}
+              committeeName={committeeName}
+              committeeArea={`Vinayaka Chavithi · ${committeeCode}`}
+              contributorName={receiptEntry.contributor_name}
+              mobile={receiptEntry.mobile}
+              amount={receiptEntry.amount}
+              receiptNo={`VC-${String(receiptEntry.id).padStart(4, '0')}`}
+              date={new Date(receiptEntry.created_at || Date.now()).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+              loggedBy={receiptEntry.logged_by_name}
+            />
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 12, flexWrap: 'wrap' }}>
+              <button className="ghost-btn" onClick={shareReceiptImage}>📤 Share receipt</button>
+              <button className="ghost-btn" onClick={() => setReceiptEntry(null)}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
