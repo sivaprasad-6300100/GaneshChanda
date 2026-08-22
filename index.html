@@ -10,12 +10,17 @@
 
     <!-- Primary SEO -->
     <title>
-      Ganesh Chanda | Ganesh Chaturthi Donation & Chanda Management
+      GaneshChanda – Vinayaka Chavithi & Ganesh Chaturthi Chanda Collection App
     </title>
 
     <meta
       name="description"
-      content="Ganesh Chanda is a simple and transparent platform to manage Ganesh Chaturthi chanda, donations, expenses, members, and festival activities."
+      content="GaneshChanda is a simple, transparent app to collect and track Vinayaka Chavithi / Ganesh Chaturthi chanda (donations). Log contributions, send instant WhatsApp receipts, track expenses, and manage your committee members in one place."
+    />
+
+    <meta
+      name="keywords"
+      content="ganesh chanda, vinayaka chavithi chanda, ganesh chaturthi donation app, chanda collection app, vinayaka chavithi donation tracker, ganesh mandal chanda, chanda receipt app, గణేష్ చందా, వినాయక చవితి చందా, చందా వసూలు యాప్"
     />
 
     <meta name="author" content="GaneshChanda" />
@@ -32,9 +37,33 @@
     />
 
     <!-- Canonical URL -->
-    <!-- Replace www.ganeshchanda.in with your actual domain -->
     <link
       rel="canonical"
+      href="https://ganeshchanda.in/"
+    />
+
+    <!-- Language / region targeting (AP & Telangana) -->
+    <meta
+      name="geo.region"
+      content="IN-TG"
+    />
+    <meta
+      name="geo.placename"
+      content="Telangana, Andhra Pradesh, India"
+    />
+    <link
+      rel="alternate"
+      hreflang="en-in"
+      href="https://ganeshchanda.in/"
+    />
+    <link
+      rel="alternate"
+      hreflang="te"
+      href="https://ganeshchanda.in/"
+    />
+    <link
+      rel="alternate"
+      hreflang="x-default"
       href="https://ganeshchanda.in/"
     />
 
@@ -59,21 +88,19 @@
 
     <meta
       property="og:title"
-      content="Ganesh Chanda | Ganesh Chaturthi Chanda & Donation Management"
+      content="GaneshChanda – Vinayaka Chavithi & Ganesh Chaturthi Chanda Collection App"
     />
 
     <meta
       property="og:description"
-      content="Manage Ganesh Chaturthi chanda, donations, expenses, members, and festival activities with Ganesh Chanda."
+      content="Collect and track Vinayaka Chavithi / Ganesh Chaturthi chanda digitally. Instant WhatsApp receipts, live totals, expense tracking, and committee member management."
     />
 
-    <!-- Replace www.ganeshchanda.in with your actual domain -->
     <meta
       property="og:url"
       content="https://ganeshchanda.in/"
     />
 
-    <!-- Replace with your actual OG image -->
     <meta
       property="og:image"
       content="https://ganeshchanda.in/og-image.jpg"
@@ -81,12 +108,17 @@
 
     <meta
       property="og:image:alt"
-      content="Ganesh Chanda - Ganesh Chaturthi Chanda Management"
+      content="GaneshChanda - Vinayaka Chavithi Chanda Collection App"
     />
 
     <meta
       property="og:site_name"
       content="GaneshChanda"
+    />
+
+    <meta
+      property="og:locale"
+      content="en_IN"
     />
 
     <!-- Twitter / X -->
@@ -97,15 +129,14 @@
 
     <meta
       name="twitter:title"
-      content="Ganesh Chanda | Ganesh Chaturthi Chanda Management"
+      content="GaneshChanda – Vinayaka Chavithi & Ganesh Chaturthi Chanda App"
     />
 
     <meta
       name="twitter:description"
-      content="Manage Ganesh Chaturthi chanda, donations, expenses, members, and festival activities."
+      content="Collect and track Vinayaka Chavithi / Ganesh Chaturthi chanda digitally with instant WhatsApp receipts and live totals."
     />
 
-    <!-- Replace www.ganeshchanda.in with your actual domain -->
     <meta
       name="twitter:image"
       content="https://ganeshchanda.in/og-image.png"
@@ -128,16 +159,62 @@
       rel="stylesheet"
     />
 
-    <!-- Structured Data -->
+    <!-- Structured Data: WebApplication -->
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
         "@type": "WebApplication",
         "name": "GaneshChanda",
+        "alternateName": ["Vinayaka Chandha", "Ganesh Chanda"],
         "url": "https://ganeshchanda.in/",
-        "description": "A platform for managing Ganesh Chaturthi chanda, donations, expenses, members, and festival activities.",
+        "description": "GaneshChanda is a digital chanda and donation management platform built for Vinayaka Chavithi (Ganesh Chaturthi) committees to log door-to-door contributions, send instant WhatsApp receipts, and track live shared totals in real time.",
         "applicationCategory": "BusinessApplication",
-        "operatingSystem": "Web"
+        "operatingSystem": "Web",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "INR",
+          "description": "Free up to 30 entries per committee"
+        },
+        "areaServed": {
+          "@type": "State",
+          "name": ["Telangana", "Andhra Pradesh"]
+        },
+        "inLanguage": ["en", "te"]
+      }
+    </script>
+
+    <!-- Structured Data: FAQ (helps capture question-style searches) -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "How to collect Vinayaka Chavithi chanda online?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "With GaneshChanda, committee members enter the contributor's name, mobile number, and amount. The app instantly sends a WhatsApp receipt and updates the live collection total for the whole committee to see."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Is GaneshChanda free to use?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes, GaneshChanda is free for committees collecting up to 30 chanda entries. Beyond that, a yearly paid plan unlocks unlimited entries."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Can multiple committee members log chanda entries?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes, any committee member can join with a code and log entries, so collection isn't limited to one person."
+            }
+          }
+        ]
       }
     </script>
   </head>
